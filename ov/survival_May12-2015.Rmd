@@ -1,0 +1,260 @@
+---
+title: "Survival Analysis of OV with Taxol, Taxotere, Cisplatin"
+output:
+  pdf_document:
+    fig_width: 6
+    fig_height: 5
+    fig_caption: true
+---
+
+# This is for survival analysis of OV data from TCGA.
+Date: 05/12/2015
+
+450 patients have been both survival data and drug sensitivity prediction. 
+
+Time measured by month.
+
+```{r, echo=FALSE}
+library(survival)
+library(GGally)
+library(ggplot2)
+library(boot)
+# function to get drug related data only
+GetMyData <- function(drug) {
+  data = surv[!is.na(surv$taxol),]
+  mydata = data[, c(4,5)]
+  mydata$use = data[, drug]
+  mydata$IC50 = data[, paste(drug, "predict", sep=".")]
+  mydata$level = data[, paste(drug, "level", sep=".")]
+  mydata$level = factor(mydata$level, levels = c("low", "medium", "high"))
+  mydata$other = data$other
+  return(mydata)
+}
+# function to product many plots and tests
+MultiPlot <- function(data) {
+  print("Month of Events vs IC50")
+	qplot(level, months, data=data[data$use, ] , geom=c("boxplot", "jitter"), 
+   fill=death, main="Month to Event ~ predicted IC50")
+	print("General Trend")
+	ggplot(data, aes(x=IC50, y=months, fill=interaction(use, death), 	color=interaction(use, death))) + geom_point(shape=1, size=5) + geom_smooth(method=lm, fullrange=T, size=3, se=F) 
+	print("Do deceased patients have weak sensitivity?")
+	qplot(death, IC50, data=data, geom=c("boxplot", "jitter"), 
+   fill=interaction(use, death), main="Predicted Sensitivity by Death",  ylab="Predicted Sensitivity")
+	print("T-test for difference")
+	with(data=data[data$use, ], t.test(IC50[death], IC50[!death]))
+	print("KM survival curves by predicted categories")
+	ggsurv(survfit(with(data[data$use, ], Surv(months,death) ~ level)))
+}
+```
+
+## 1. Load Data:
+
+```{r}
+load("./surv.lv3.pred.rda")
+dim(surv)
+surv$carboplatin.predict = surv$cisplatin.predict
+surv$carboplatin.level = surv$cisplatin.level
+head(surv)
+qplot(taxol.level, taxol.predict, data=surv , geom=c("boxplot", "jitter"), 
+   fill=taxol.level, 
+   xlab="", ylab="Predicted Taxol IC50")
+qplot(taxotere.level, taxotere.predict, data=surv , geom=c("boxplot", "jitter"), 
+   fill=taxotere.level, 
+   xlab="", ylab="Predicted Taxotere IC50") 
+qplot(cisplatin.level, cisplatin.predict, data=surv , geom=c("boxplot", "jitter"), 
+   fill=cisplatin.level, 
+   xlab="", ylab="Predicted Cisplatin IC50")  
+
+```
+
+___
+
+
+## 2. Correlation between taxol and taxotere, and cisplatin:
+
+```{r}
+l = lm(surv$taxotere.predict ~ surv$taxol.predict)
+plot(surv$taxol.predict, surv$taxotere.predict)
+abline(l)
+print("IC50 prediction correlation b/w taxol and taxoltere")
+summary(lm(surv$taxol.predict ~ surv$taxotere.predict))$adj.r.squared
+print("IC50 prediction correlation b/w cisplatin and taxoltere")
+summary(lm(surv$cisplatin.predict ~ surv$taxotere.predict))$adj.r.squared
+print("IC50 prediction correlation b/w taxol and cisplatin")
+summary(lm(surv$taxol.predict ~ surv$cisplatin.predict))$adj.r.squared
+```
+
+___
+
+
+## 3. taxol:
+
+```{r}
+drug = "taxol"
+data = GetMyData(drug)
+
+  print("Month of Events vs IC50")
+# the predicted sensitivity has a negative effect on survival time.  
+# However, the same trend is also seen in patients without such drug 
+# treatment, which suggest some bias/confounder effect not related to 
+# the drug treatment itself
+  qplot(level, months, data=data[data$use, ] , geom=c("boxplot", "jitter"), 
+   fill=death, main="Month to Event ~ predicted IC50")
+	print("General Trend")
+# General Trend were drawn with regression line and/or confidence 
+# intervals.  However, there is some bug in R MarkDown, and it does 
+# not shown.  You can manually draw it following code in Rmd file.
+	ggplot(data, aes(x=IC50, y=months, fill=interaction(use, death), 	color=interaction(use, death))) + geom_point(shape=1, size=2) + geom_smooth(method=lm, fullrange=T, size=2) 
+	print("Do deceased patients have weak sensitivity?")
+# There is noticable increase of IC50 from live patients(green) to 
+# deceased ones (purple).  I didn't see a similar increase in patients 
+# who was not treated (from red to blue), which suggesting the observed 
+# effect could be real.  That's why I believe categorize by death is 
+# better than counting real number of months. 
+	qplot(death, IC50, data=data, geom=c("boxplot", "jitter"), 
+   fill=interaction(use, death), main="Predicted IC50 by Death of all patients",  ylab="Predicted IC50")
+  qplot(death, IC50, data=data[data$use, ], geom=c("boxplot", "jitter"), 
+   fill=death, main="Predicted IC50 by Death with patients who used the drug",  ylab="Predicted IC50")
+	print("T-test for difference")
+	with(data=data[data$use, ], t.test(IC50[death], IC50[!death]))
+	print("KM survival curves by predicted categories")
+	ggsurv(survfit(with(data[data$use, ], Surv(months,death) ~ level)))
+
+# prediction of death using IC50 prediction and "other" drug usage
+my.logit = glm(death ~ IC50 + other, data=data[data$use, ], family="binomial")
+summary(my.logit)
+cost = function(r, pi = 0) mean(abs(r-pi) > 0.5)
+my.cv.err = cv.glm(data[data$use, ], my.logit, cost, K=10)
+# delta, similar to prediction error
+# major prediction power is in "other" drug use, and it has a negative 
+# effect on survival. 
+my.cv.err$delta[2]
+
+# prediction using other only
+my.logit2 = glm(death ~ other, data=data[data$use, ], family="binomial")
+summary(my.logit)
+cost = function(r, pi = 0) mean(abs(r-pi) > 0.5)
+my.cv.err = cv.glm(data[data$use, ], my.logit, cost, K=10)
+# delta, similar to prediction error
+# major prediction power is in "other" drug use, and it has a negative 
+# effect on survival 
+my.cv.err$delta[2]
+
+
+```
+
+___
+
+
+## 4. taxotere:
+
+```{r}
+drug = "taxotere"
+data = GetMyData(drug)
+
+  print("Month of Events vs IC50")
+  qplot(level, months, data=data[data$use, ] , geom=c("boxplot", "jitter"), 
+   fill=death, main="Month to Event ~ predicted IC50")
+  print("General Trend")
+	ggplot(data, aes(x=IC50, y=months, fill=interaction(use, death), 	color=interaction(use, death))) + geom_point(shape=1, size=2) + geom_smooth(method=lm, fullrange=T, size=2) 
+	print("Do deceased patients have weak sensitivity?")
+  qplot(death, IC50, data=data, geom=c("boxplot", "jitter"), 
+   fill=interaction(use, death), main="Predicted IC50 by Death of all patients",  ylab="Predicted IC50")
+  qplot(death, IC50, data=data[data$use, ], geom=c("boxplot", "jitter"), 
+   fill=death, main="Predicted IC50 by Death with patients who used the drug",  ylab="Predicted IC50")
+	print("T-test for difference")
+	with(data=data[data$use, ], t.test(IC50[death], IC50[!death]))
+	print("KM survival curves by predicted categories")
+	ggsurv(survfit(with(data[data$use, ], Surv(months,death) ~ level)))
+
+```
+___
+
+
+## 5. cisplatin:
+
+```{r}
+drug = "cisplatin"
+data = GetMyData(drug)
+
+  print("Month of Events vs IC50")
+  qplot(level, months, data=data[data$use, ] , geom=c("boxplot", "jitter"), 
+   fill=death, main="Month to Event ~ predicted IC50")
+  print("General Trend")
+  ggplot(data, aes(x=IC50, y=months, fill=interaction(use, death), 	color=interaction(use, death))) + geom_point(shape=1, size=2) + geom_smooth(method=lm, fullrange=T, size=2) 
+	print("Do deceased patients have weak sensitivity?")
+  qplot(death, IC50, data=data, geom=c("boxplot", "jitter"), 
+   fill=interaction(use, death), main="Predicted IC50 by Death of all patients",  ylab="Predicted IC50")
+  qplot(death, IC50, data=data[data$use, ], geom=c("boxplot", "jitter"), 
+   fill=death, main="Predicted IC50 by Death with patients who used the drug",  ylab="Predicted IC50")
+	print("T-test for difference")
+	with(data=data[data$use, ], t.test(IC50[death], IC50[!death]))
+	print("KM survival curves by predicted categories")
+	ggsurv(survfit(with(data[data$use, ], Surv(months,death) ~ level)))
+
+```
+
+___
+
+
+## 6. carboplatin using cisplatin predictions:
+
+```{r}
+drug = "carboplatin"
+data = GetMyData(drug)
+
+  print("Month of Events vs IC50")
+  qplot(level, months, data=data[data$use, ] , geom=c("boxplot", "jitter"), 
+   fill=death, main="Month to Event ~ predicted IC50")
+  print("General Trend")
+  ggplot(data, aes(x=IC50, y=months, fill=interaction(use, death), 	color=interaction(use, death))) + geom_point(shape=1, size=2) + geom_smooth(method=lm, fullrange=T, size=2) 
+	print("Do deceased patients have weak sensitivity?")
+  qplot(death, IC50, data=data, geom=c("boxplot", "jitter"), 
+   fill=interaction(use, death), main="Predicted IC50 by Death of all patients",  ylab="Predicted IC50")
+  qplot(death, IC50, data=data[data$use, ], geom=c("boxplot", "jitter"), 
+   fill=death, main="Predicted IC50 by Death with patients who used the drug",  ylab="Predicted IC50")
+	print("T-test for difference")
+	with(data=data[data$use, ], t.test(IC50[death], IC50[!death]))
+	print("KM survival curves by predicted categories")
+	ggsurv(survfit(with(data[data$use, ], Surv(months,death) ~ level)))
+
+```
+
+___
+
+
+## 7. taxol and carboplatin (using cisplatin prediction):
+
+```{r}
+carbotaxol.data = with(surv, surv[which(taxol & carboplatin & !cisplatin & !taxotere ) , ])
+level = paste(carbotaxol.data$cisplatin.level, carbotaxol.data$taxol.level, sep="|")
+carbotaxol.data$level = level
+w = which(level == "high|high")
+data = cbind(carbotaxol.data[w,], cat="both high")
+w = which(grepl("high", level))
+data = rbind(data, cbind(carbotaxol.data[w,], cat="at least one high"))
+w = which(level == "low|low")
+data = rbind(data, cbind(carbotaxol.data[w,], cat="both low"))
+w = which(!grepl("high", level))
+data = rbind(data, cbind(carbotaxol.data[w,], cat="neither high"))
+data$cat = factor(data$cat, levels = c("both low", "neither high", "at least one high", "both high"))
+
+ggsurv(survfit(with(data, Surv(months,death) ~ cat)))
+qplot(cat, months, data=data , geom=c("boxplot", "jitter"), 
+       fill=death, main="Month to Event ~ predicted sensitivity")
+
+qplot(cat, cisplatin.predict, data=data, geom=c("boxplot", "jitter"), 
+   fill=cat, main="Predicted Carboplatin Sensitivity by Death",
+   xlab="", ylab="Predicted Cisplatin Sensitivity")
+qplot(cat, taxol.predict, data=data, geom=c("boxplot", "jitter"), 
+   fill=cat, main="Predicted Taxol Sensitivity by Death",
+   xlab="", ylab="Predicted Taxol Sensitivity")
+
+my.logit = glm(death ~ taxol.predict + cisplatin.predict + other, data=carbotaxol.data, family="binomial")
+summary(my.logit)
+   
+```
+
+___
+
+

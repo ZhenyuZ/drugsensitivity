@@ -1,0 +1,112 @@
+---
+title: "Available Expression data of TCGA OV"
+output:
+  pdf_document:
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+---
+
+# This is for survival analysis of OV data from TCGA.
+Date: 04/14/2015
+
+587 patients in total.
+
+
+```{r, echo=FALSE}
+library(data.table)
+GetTCGATable <- function(url) {
+  if(grepl("^http", url)) {
+    s <- try(content(GET(url), as = "text"), silent = TRUE);
+    if (class(s) == "try-error") 
+      return(NULL);    
+    tbl <- read.table(textConnection(s), h=T, sep="\t", quote="\"")  
+  } else {
+    tbl = data.frame(fread(url))
+  }
+  if(grepl("bcr_", tbl[1,1]) | grepl("CDE_ID", tbl[1,1]))
+    tbl	<- tbl[-1,]
+  if(grepl("bcr_", tbl[1,1]) | grepl("CDE_ID", tbl[1,1]))
+    tbl	<- tbl[-1,]
+  return(tbl);
+}
+```
+
+## 1. Berkeley Lab Affy Human Exon 1.0 v2:
+
+```{r}
+file = "lbl.gov_OV.HuEx-1_0-st-v2.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+___
+
+## 2. Broad Affy HG-U133A:
+
+```{r}
+file = "broad.mit.edu_OV.HT_HG-U133A.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+___
+
+## 3. UNC Aiglent G4502A_07.2:
+
+```{r}
+file = "unc.edu_OV.AgilentG4502A_07_2.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+
+___
+
+## 4. UNC Aiglent G4502A_07.3:
+
+```{r}
+file = "unc.edu_OV.AgilentG4502A_07_3.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+___
+
+## 5. Harvard RNA-Seq DGE:
+
+```{r}
+file = "hms.harvard.edu_OV.IlluminaGA_mRNA_DGE.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+
+___
+
+## 6. UNC RNA-SeqV2:
+
+```{r}
+file = "unc.edu_OV.IlluminaHiSeq_RNASeqV2.1.1.0.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```
+
+___
+
+## 7. BC RNA-Seq:
+
+```{r}
+file = "bcgsc.ca_OV.IlluminaHiSeq_RNASeq.sdrf.txt"
+tbl = GetTCGATable(file)
+sample = unique(substr(tbl$Comment..TCGA.Barcode., 1, 15))
+patient = unique(substr(sample[substr(sample, 14, 15)=="01"], 1, 12))
+length(patient)
+```

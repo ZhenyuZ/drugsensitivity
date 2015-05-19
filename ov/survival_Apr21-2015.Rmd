@@ -1,0 +1,63 @@
+---
+title: "Survival Analysis of OV with Taxol, Taxotere, Carboplatin and Cisplatin"
+output:
+  pdf_document:
+    fig_width: 5
+    fig_height: 4
+    fig_caption: true
+---
+
+# This is for survival analysis of OV data from TCGA.
+Date: 04/21/2015
+
+583 patients to start with. Remove patients with incomplete date, no drug use information, etc.  Final set has 527 patients. 
+
+Time measured by month.
+
+```{r, echo=FALSE}
+library(survival)
+library(GGally)
+surv = read.table("/Users/zhenyu/Downloads/working/Steph/ov/surv.txt", h=T, sep="\t")
+```
+
+## 1. KM Curve and Survial test by Taxol:
+
+```{r}
+cat("Proportion of patients with Taxol treatment: ", sum(surv$Taxol, na.rm=T)/(527-sum(is.na(surv$Taxol))), "\n")
+surv.data = with(surv, Surv(months,death) ~ Taxol)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+___
+
+## 2. KM Curve and Survial test by Taxotere:
+
+```{r}
+cat("Proportion of patients with Taxotere treatment: ", sum(surv$Taxotere, na.rm=T)/(527-sum(is.na(surv$Taxotere))), "\n")
+surv.data = with(surv, Surv(months,death) ~ Taxotere)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+___
+
+## 3. KM Curve and Survial test by Carboplatin:
+
+```{r}
+cat("Proportion of patients with Carboplatin treatment: ", sum(surv$Carboplatin, na.rm=T)/(527-sum(is.na(surv$Carboplatin))), "\n")
+surv.data = with(surv, Surv(months,death) ~ Carboplatin)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
+## 4. KM Curve and Survial test by Cisplatin:
+
+```{r}
+cat("Proportion of patients with Cisplatin treatment: ", sum(surv$Cisplatin, na.rm=T)/(527-sum(is.na(surv$Cisplatin))), "\n")
+surv.data = with(surv, Surv(months,death) ~ Cisplatin)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___

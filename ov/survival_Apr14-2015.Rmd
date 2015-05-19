@@ -1,0 +1,90 @@
+---
+title: "Survival Analysis of OV with Taxol, Taxotere, Carboplatin and Cisplatin"
+output:
+  pdf_document:
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+---
+
+# This is for survival analysis of OV data from TCGA.
+Date: 04/14/2015
+
+583 patients in total.
+
+Time measured by month.
+
+```{r, echo=FALSE}
+library(survival)
+library(GGally)
+surv = read.table("/Users/zhenyu/Downloads/working/Steph/ov/surv.txt", h=T, sep="\t")
+```
+
+## 1. KM Curve and Survial test by Taxol:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ taxol)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+___
+
+## 2. KM Curve and Survial test by Taxotere:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ taxotere)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+___
+
+## 3. KM Curve and Survial test by Carboplatin:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ carboplatin)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
+## 4. KM Curve and Survial test by Cisplatin:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ cisplatin)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
+## 5. KM Curve and Survial test by Carboplatin or Cisplatin:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ (carboplatin|cisplatin))
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
+## 6. KM Curve and Survial test by Taxol or Taxotere:
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ (taxol|taxotere))
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
+## 7. KM Curve and Survial test by at least one "Tax" and one "Platin":
+
+```{r}
+surv.data = with(surv, Surv(months,death) ~ ((carboplatin|cisplatin) & (taxol|taxotere)))
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+
+

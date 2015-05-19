@@ -1,0 +1,66 @@
+---
+title: "Survival Analysis of OV with Taxol"
+output:
+  pdf_document:
+    fig_width: 5
+    fig_height: 4
+    fig_caption: true
+---
+
+# This is for survival analysis of OV data from TCGA.
+Date: 05/05/2015
+
+380 patients have been treated with Taxol. 
+
+Time measured by month.
+
+```{r, echo=FALSE}
+library(survival)
+library(GGally)
+library(ggplot2)
+```
+
+## 1. Load Data:
+
+```{r}
+load("/Users/zhenyu/Downloads/working/Steph/ov/taxol.data.rda")
+head(taxol.data)
+cat = table(with(taxol.data, paste(taxol, taxotere, carboplatin, cisplatin, other, sep="|")))
+cat2 = cbind(rownames(cat), cat)
+rownames(cat2)=NULL
+colnames(cat2) = c("Taxol|Taxotere|Carboplatin|Cisplatin|Other", "count")
+print(cat2)
+```
+___
+
+## 2. Predicted sensitivity by death, and one-sided t-test:
+
+```{r}
+qplot(death, pred, data=taxol.data, geom=c("boxplot", "jitter"), 
+   fill=death, main="Predicted Taxol Sensitivity by Death",
+   xlab="", ylab="Predicted Taxol Sensitivity")
+with(taxol.data, t.test(taxol.prediction[death], taxol.prediction[!death], "greater"))
+```
+___
+
+## 3. KM Curve by Sensitivity Quantile:
+
+```{r}
+ggsurv(survfit(with(taxol.data, Surv(months,death) ~ quantile)))
+
+#ggsurv(survfit(surv.data))
+#survdiff(surv.data)
+```
+
+___
+
+## 4. KM Curve and Survial test by Q1 and Q4:
+
+```{r}
+surv.data = with(taxol.data[which(taxol.data$quantile %in% c("Q1", "Q4")), ], Surv(months,death) ~ quantile)
+ggsurv(survfit(surv.data))
+survdiff(surv.data)
+```
+
+___
+
